@@ -20,21 +20,21 @@ data.elecciones <- read.dta('./data/homic_elec.dta')
 data.poblacion <- read.csv('./data//municipio-population1990-2030.csv')
 
 Estado <- data.poblacion$Code %>% as.character()
+n = length(Estado)
 Municipio <- rep(0,n)
-n = length(code)
 
-add.zero <- function(x){
-  if(!is.na(x)){
-    if(nchar(x) == 4 ){
-      x <- paste('0', x, sep = "")
-    }
-  }
-}
 
 for(i in 1:n){
-  Estado[i] <- add.zero(Estado[i])
-  Municipio[i] <- substr(Estado[i], 3, 5)
-  Estado[i] <- substr(Estado[i], 1, 2)
+  if(is.na(Estado[i])){
+    Municipio[i] <- NA
+  }
+  else{
+    if(nchar(Estado[i]) == 4){
+      Estado[i] <- paste('0', Estado[i], sep = "")
+    }
+    Municipio[i] <- substr(Estado[i], 3, 5)
+    Estado[i] <- substr(Estado[i], 1, 2)
+  }
 }
 
 data.poblacion$Estado <- Estado 
@@ -105,7 +105,7 @@ data <- data %>% mutate(MuertesPC = Muertes / Population * 1000)
 
 data <- data %>% filter(MuertesPC > 0)
 
-lm(MuertesPC ~ diff, data) %>% summary()
+lm(MuertesPC ~ tratamiento, data) %>% summary()
 
 ```
 
