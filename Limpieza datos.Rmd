@@ -1,0 +1,70 @@
+---
+title: "Modelos jerárquicos causales"
+author: "José Manuel Proudinat Silva"
+date: "05/16/2015"
+output: html_document
+---
+
+
+```{r}
+
+setwd('~/Projects/Hierarchical causal models/')
+
+# Paquetes
+library(dplyr)
+library(tidyr)
+library(foreign)
+library(ggplot2)
+
+data.elecciones <- read.dta('./data/homic_elec.dta')
+# seleccionamos las variables importantes de nuestro estudio
+data.elecciones <- data.elecciones %>% 
+  select(mun_id, aoelectoral, diff,
+                                              contains('2006'),
+                                              contains('2007'),
+                                              contains('2008'),
+                                              contains('2009'),
+                                              contains('2010'))
+
+# Sumamos los meses para tenter las variables agregadas por año
+vars2006 <- data.elecciones %>% select(contains('2006')) %>% names()
+data.elecciones$Muertes_2006 <- apply(data.elecciones[, vars2006], 1, sum)
+vars2007 <- data.elecciones %>% select(contains('2007')) %>% names()
+data.elecciones$Muertes_2007 <- apply(data.elecciones[, vars2007], 1, sum)
+vars2008 <- data.elecciones %>% select(contains('2008')) %>% names()
+data.elecciones$Muertes_2008 <- apply(data.elecciones[, vars2008], 1, sum)
+vars2009 <- data.elecciones %>% select(contains('2009')) %>% names()
+data.elecciones$Muertes_2009 <- apply(data.elecciones[, vars2009], 1, sum)
+vars2010 <- data.elecciones %>% select(contains('2010')) %>% names()
+data.elecciones$Muertes_2010 <- apply(data.elecciones[, vars2010], 1, sum)
+
+# Seleccionamos solo los agregados
+data.elecciones <- data.elecciones %>% select(mun_id,
+                                              aoelectoral,
+                                              diff,
+                                              contains('Muertes'))
+
+# Separamos el id municipio estado
+data.elecciones <- data.elecciones %>%
+  separate(mun_id, into = c("Estado", "Municipio"), sep = " ")
+
+# Acomodamos los datos de muertes de manera 'optima
+data.elecciones <- data.elecciones %>%
+  gather(Ano, Muertes, contains('Muertes')) %>%
+  separate(Ano, into = c("Desechar", "Ano"), sep = "_")
+data.elecciones <- data.elecciones[ , -5]
+
+# Creamos una indicadora si el a;o de muertes coincide con el electoral
+data.elecciones <- data.elecciones %>%
+  mutate(aoelectoral = as.numeric((aoelectoral == Ano)))
+
+# Creamos una indicadora si la diferencia en elecciones fue menor a .05
+data.elecciones <- data.elecciones %>%
+  mutate(diff = as.numeric(diff < 0.05))
+
+# Creamos el dummy tratamiento - control
+data.elecciones <- data.elecciones %>% 
+  mutate(tratamiento = aoelectoral * diff)
+
+```
+
