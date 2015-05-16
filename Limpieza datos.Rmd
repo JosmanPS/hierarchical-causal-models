@@ -17,7 +17,31 @@ library(foreign)
 library(ggplot2)
 
 data.elecciones <- read.dta('./data/homic_elec.dta')
-load('./data/metro.areas.RData')
+data.poblacion <- read.csv('./data//municipio-population1990-2030.csv')
+
+Estado <- data.poblacion$Code %>% as.character()
+Municipio <- rep(0,n)
+n = length(code)
+
+add.zero <- function(x){
+  if(!is.na(x)){
+    if(nchar(x) == 4 ){
+      x <- paste('0', x, sep = "")
+    }
+  }
+}
+
+for(i in 1:n){
+  Estado[i] <- add.zero(Estado[i])
+  Municipio[i] <- substr(Estado[i], 3, 5)
+  Estado[i] <- substr(Estado[i], 1, 2)
+}
+
+data.poblacion$Estado <- Estado 
+data.poblacion$Municipio <- Municipio 
+data.poblacion <- data.poblacion %>% filter(Sex == 'Total')
+
+rm('Estado', 'Municipio')
 
 # seleccionamos las variables importantes de nuestro estudio
 data.elecciones <- data.elecciones %>% 
@@ -51,9 +75,6 @@ data.elecciones <- data.elecciones %>% select(mun_id,
 # Separamos el id municipio estado
 data.elecciones <- data.elecciones %>%
   separate(mun_id, into = c("Estado", "Municipio"), sep = " ")
-data.elecciones[ ,1] <- as.numeric(data.elecciones[ ,1])
-data.elecciones[ ,2] <- as.numeric(data.elecciones[ ,2])
-
 
 # Acomodamos los datos de muertes de manera 'optima
 data.elecciones <- data.elecciones %>%
@@ -73,17 +94,18 @@ data.elecciones <- data.elecciones %>%
 data.elecciones <- data.elecciones %>% 
   mutate(tratamiento = aoelectoral * diff)
 
-data.elecciones <- data.elecciones %>% filter(Ano == 2009)
-
 # Unimos los datos con poblacion
-metro.areas <- metro.areas[, c(2,4,5)]
-names(metro.areas)[2:3] <- c('Estado', 'Municipio')
-data <- inner_join(data.elecciones, metro.areas, by = c('Estado', 'Municipio'))
+data.poblacion <- data.poblacion %>% select(Year, Estado, Municipio, Population)
+data.elecciones$Ano <- as.integer(data.elecciones$Ano)
+names(data.poblacion)[1] <- 'Ano'
+data <- inner_join(data.elecciones, data.poblacion, by = c('Ano', 'Estado', 'Municipio'))
 
 # Modificamos las muertes per capita
-data <- data %>% mutate(MuertesPC = Muertes / mun_population_2010 * 1000)
+data <- data %>% mutate(MuertesPC = Muertes / Population * 1000)
 
-lm(MuertesPC ~ tratamiento, data) %>% summary()
+data <- data %>% filter(MuertesPC > 0)
+
+lm(MuertesPC ~ diff, data) %>% summary()
 
 ```
 
