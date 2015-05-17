@@ -100,12 +100,21 @@ data.elecciones$Ano <- as.integer(data.elecciones$Ano)
 names(data.poblacion)[1] <- 'Ano'
 data <- inner_join(data.elecciones, data.poblacion, by = c('Ano', 'Estado', 'Municipio'))
 
-# Modificamos las muertes per capita
-data <- data %>% mutate(MuertesPC = Muertes / Population * 1000)
+##########
+data.hom.mun <- data %>% group_by(Estado, Municipio) %>%
+  summarise(hom = sum(Muertes), pob = mean(Population)) %>%
+  mutate(hom.mun = hom / pob * 1000) %>%
+  select(Estado, Municipio, hom.mun)
 
-data <- data %>% filter(MuertesPC > 0)
+data.hom.ano <- data %>% group_by(Ano) %>%
+  summarise(hom = sum(Muertes), pob = sum(Population)) %>%
+  mutate(hom.ano = hom / pob * 1000) %>%
+  select(Ano, hom.ano)
 
-lm(MuertesPC ~ tratamiento, data) %>% summary()
+data <- inner_join(data, data.hom.ano, by = 'Ano')
+data <- inner_join(data, data.hom.mun, by = c('Estado', 'Municipio'))
+
+data <- data %>% select(Municipio, Estado, Ano, hom.ano, hom.mun, diff, Muertes)
 
 ```
 
